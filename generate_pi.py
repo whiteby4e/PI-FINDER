@@ -13,6 +13,12 @@ import sys
 from pathlib import Path
 
 
+# Python 3.11+ limits int-to-string conversion to 4300 digits by default.
+# PI-FINDER intentionally works with much larger integers while generating pi.
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
+
+
 C = 640320
 C3_OVER_24 = C**3 // 24
 DIGITS_PER_TERM = 14.181647462725477
@@ -102,5 +108,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.set_int_max_str_digits(0)
     main()
