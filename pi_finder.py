@@ -16,7 +16,7 @@ DEFAULT_AUTO_DIGITS = 100_000
 AUTO_MAX_DIGITS = 10_000_000
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-PI_PREFIX = "3.14159265358979323846264338327950288419716939937510"
+PI_PREFIX = "314159265358979323846264338327950288419716939937510"
 
 
 def encode_word(word: str) -> str:
@@ -44,7 +44,7 @@ def search_word(file_path: str | Path, word: str) -> tuple[str, int]:
 
 
 def _pi_digits_in_file(file_path: Path) -> int:
-    """Return the number of digits after the decimal point in a pi file."""
+    """Return the number of digits in the continuous pi dataset."""
     if not file_path.exists():
         return 0
 
@@ -52,8 +52,7 @@ def _pi_digits_in_file(file_path: Path) -> int:
     if size == 0:
         return 0
 
-    # pi.txt is written as "3.<digits>" by generate_pi.py.
-    return max(0, size - 2)
+    return size
 
 
 def _generate_more_pi(file_path: Path, current_digits: int, required_digits: int) -> int:
@@ -170,7 +169,7 @@ def continue_generation(file_path: Path) -> None:
 
 
 def check_database_integrity(file_path: Path) -> bool:
-    """Check basic structure and the known decimal prefix of pi."""
+    """Check that pi.txt contains only the expected decimal digits of pi."""
     if not file_path.exists():
         print("\nDatabase integrity: FAILED")
         print("Reason: pi.txt does not exist.")
@@ -181,7 +180,7 @@ def check_database_integrity(file_path: Path) -> bool:
             prefix = file.read(len(PI_PREFIX))
             if prefix != PI_PREFIX:
                 print("\nDatabase integrity: FAILED")
-                print("Reason: invalid π prefix or corrupted header.")
+                print("Reason: invalid π prefix or corrupted dataset.")
                 return False
 
             checked = len(prefix)
@@ -191,7 +190,7 @@ def check_database_integrity(file_path: Path) -> bool:
                     break
                 if not chunk.isdigit():
                     print("\nDatabase integrity: FAILED")
-                    print(f"Reason: non-digit data detected after byte {checked:,}.")
+                    print(f"Reason: non-digit data detected after character {checked:,}.")
                     return False
                 checked += len(chunk)
 
@@ -201,7 +200,7 @@ def check_database_integrity(file_path: Path) -> bool:
 
     print("\nDatabase integrity: OK")
     print(f"Checked: {checked:,} characters")
-    print("Format: 3.<decimal digits>")
+    print("Format: continuous decimal digits (3.14159...)")
     return True
 
 
@@ -397,3 +396,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+"
