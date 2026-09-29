@@ -1,9 +1,10 @@
-"""Interactive text interface for PI-FINDER."""
+"""Interactive terminal interface for PI-FINDER."""
 
 from __future__ import annotations
 
+import ctypes
+import os
 import time
-import tracemalloc
 import webbrowser
 from pathlib import Path
 
@@ -21,8 +22,85 @@ DEFAULT_PI_FILE = "pi.txt"
 DEFAULT_AUTO_DIGITS = 100_000
 AUTO_MAX_DIGITS = 10_000_000
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
 PI_PREFIX = "314159265358979323846264338327950288419716939937510"
+
+
+class UI:
+    """Small ANSI terminal UI with a safe Windows fallback."""
+
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[96m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    MAGENTA = "\033[95m"
+    WHITE = "\033[97m"
+
+    @classmethod
+    def enable(cls) -> None:
+        if os.name != "nt":
+            return
+        try:
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.GetStdHandle(-11)
+            mode = ctypes.c_ulong()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+        except (AttributeError, OSError):
+            pass
+
+    @classmethod
+    def paint(cls, text: str, color: str = "") -> str:
+        return f"{color}{text}{cls.RESET}" if color else text
+
+    @classmethod
+    def clear(cls) -> None:
+        os.system("cls" if os.name == "nt" else "clear")
+
+    @classmethod
+    def header(cls, title: str, subtitle: str = "") -> None:
+        print()
+        print(cls.paint("╔════════════════════════════════════════════════════════════╗", cls.CYAN))
+        print(cls.paint(f"║  {title:<56}║", cls.BOLD + cls.WHITE))
+        if subtitle:
+            print(cls.paint(f"║  {subtitle:<56}║", cls.DIM + cls.CYAN))
+        print(cls.paint("╚════════════════════════════════════════════════════════════╝", cls.CYAN))
+
+    @classmethod
+    def section(cls, title: str) -> None:
+        print()
+        print(cls.paint(f"── {title} " + "─" * max(0, 54 - len(title)), cls.BLUE))
+
+    @classmethod
+    def success(cls, text: str) -> None:
+        print(cls.paint(f"✓ {text}", cls.GREEN))
+
+    @classmethod
+    def error(cls, text: str) -> None:
+        print(cls.paint(f"✗ {text}", cls.RED))
+
+    @classmethod
+    def warn(cls, text: str) -> None:
+        print(cls.paint(f"! {text}", cls.YELLOW))
+
+    @classmethod
+    def info(cls, text: str) -> None:
+        print(cls.paint(f"› {text}", cls.CYAN))
+
+    @classmethod
+    def stat(cls, label: str, value: str) -> None:
+        print(f"  {cls.paint(label + ':', cls.DIM):<24}{cls.paint(value, cls.WHITE)}")
+
+    @classmethod
+    def bar(cls, current: int, total: int, width: int = 34) -> str:
+        if total <= 0:
+            return "[" + "·" * width + "]"
+        ratio = min(1.0, max(0.0, current / total))
+        filled = int(ratio * width)
+        return "[" + "█" * filled + "░" * (width - filled) + "]"
 
 
 def encode_word(word: str) -> str:
@@ -58,14 +136,13 @@ def _pi_digits_in_file(file_path: Path) -> int:
     if size == 0:
         return 0
 
-    # Do not count a trailing newline from a downloaded copy as a digit.
     with file_path.open("rb") as file:
         file.seek(-1, 2)
-        if file.read(1) == b"\\n":
+        if file.read(1) == b"\n":
             size -= 1
             if size > 0:
                 file.seek(-1, 2)
-                if file.read(1) == b"\\r":
+                if file.read(1) == b"\r":
                     size -= 1
 
     return size
@@ -83,20 +160,16 @@ def _generate_more_pi(file_path: Path, current_digits: int, required_digits: int
     if target <= current_digits:
         return current_digits
 
-    print(f"Generating pi to {target:,} digits...")
+    UI.section("PI GENERATOR")
+    UI.info(f"Growing database: {current_digits:,} → {target:,} digits")
     start = time.perf_counter()
     write_pi(file_path, target)
     elapsed = time.perf_counter() - start
-    print(f"Generated {target:,} digits in {elapsed:.3f} s.")
-
+    UI.success(f"Generated {target:,} digits in {elapsed:.3f} s.")
     return target
 
 
-def auto_search(
-    file_path: str | Path,
-    pattern: str,
-    label: str = "number",
-) -> int:
+def auto_search(file_path: str | Path, pattern: str, label: str = "number") -> int:
     """Search and grow a verified digits-only pi database when needed."""
     path = Path(file_path)
     current_digits = _pi_digits_in_file(path)
@@ -109,20 +182,20 @@ def auto_search(
         current_digits = _generate_more_pi(path, 0, len(pattern))
 
     while True:
-        print(f"Searching {current_digits:,} pi digits...")
+        UI.info(f"Scanning {current_digits:,} pi digits...")
         position = search_text(path, pattern)
 
         if position != -1:
             return position
 
         if current_digits >= AUTO_MAX_DIGITS:
-            print(
-                f"Not found after searching {current_digits:,} digits. "
+            UI.warn(
+                f"Pattern not found after {current_digits:,} digits. "
                 "Automatic generation limit reached."
             )
             return -1
 
-        print(f"Not found in the current {label} dataset.")
+        UI.warn(f"Not found in the current {label} dataset.")
         next_digits = _generate_more_pi(path, current_digits, len(pattern))
 
         if next_digits == current_digits:
@@ -133,43 +206,38 @@ def auto_search(
 
 def print_result(position: int) -> None:
     if position == -1:
-        print("Not found.")
+        UI.error("Pattern not found.")
     else:
-        print(f"Found at position: {position:,}")
+        UI.success(f"Found at position {position:,}.")
 
 
 def database_info(file_path: Path) -> None:
     """Display information about the current pi database."""
     digits = _pi_digits_in_file(file_path)
 
-    print("\nPI-FINDER DATABASE")
-    print("-" * 32)
+    UI.header("PI DATABASE", "Persistent π dataset status")
 
     if not file_path.exists():
-        print("Status:      NOT FOUND")
-        print("Database:    pi.txt")
-        print("Digits:      0")
-        print("File size:   0 B")
-        print("\nNo database exists yet.")
+        UI.error("Database not found.")
+        UI.stat("Database", str(file_path))
+        UI.stat("Digits", "0")
+        UI.stat("File size", "0 B")
+        UI.info("Generate a database from the main menu.")
         return
 
     size = file_path.stat().st_size
-    modified = time.strftime(
-        "%Y-%m-%d %H:%M:%S",
-        time.localtime(file_path.stat().st_mtime),
-    )
+    modified = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(file_path.stat().st_mtime))
 
-    print("Status:      AVAILABLE")
-    print(f"Database:    {file_path}")
-    print(f"Digits:      {digits:,}")
-    print(f"File size:   {format_bytes(size)}")
-    print(f"Last update: {modified}")
+    UI.success("Database is available.")
+    UI.stat("Path", str(file_path))
+    UI.stat("Digits", f"{digits:,}")
+    UI.stat("File size", format_bytes(size))
+    UI.stat("Last update", modified)
 
     if digits:
         progress = min(100, digits / AUTO_MAX_DIGITS * 100)
-        filled = int(progress / 5)
-        bar = "[" + "#" * filled + "." * (20 - filled) + "]"
-        print(f"Progress:    {bar} {digits:,}/{AUTO_MAX_DIGITS:,}")
+        print(f"\n  {UI.bar(digits, AUTO_MAX_DIGITS)} {progress:6.2f}%")
+        UI.stat("Auto-search limit", f"{AUTO_MAX_DIGITS:,} digits")
 
 
 def continue_generation(file_path: Path) -> None:
@@ -182,7 +250,7 @@ def continue_generation(file_path: Path) -> None:
         target = min(current_digits * 2, AUTO_MAX_DIGITS)
 
     if target <= current_digits:
-        print(f"Database is already at the {AUTO_MAX_DIGITS:,}-digit limit.")
+        UI.warn(f"Database is already at the {AUTO_MAX_DIGITS:,}-digit limit.")
         return
 
     _generate_more_pi(file_path, current_digits, target)
@@ -191,8 +259,8 @@ def continue_generation(file_path: Path) -> None:
 def check_database_integrity(file_path: Path, repair: bool = False) -> bool:
     """Check the dataset and optionally rebuild it when corruption is found."""
     if not file_path.exists():
-        print("\nDatabase integrity: FAILED")
-        print("Reason: pi.txt does not exist.")
+        UI.error("Database integrity: FAILED")
+        UI.warn("Reason: pi.txt does not exist.")
         return False
 
     prefix_bytes = PI_PREFIX.encode("ascii")
@@ -209,18 +277,13 @@ def check_database_integrity(file_path: Path, repair: bool = False) -> bool:
 
                 actual = prefix[mismatch:mismatch + 1]
                 expected = prefix_bytes[mismatch:mismatch + 1]
-                actual_value = (
-                    f"0x{actual[0]:02X} ({actual!r})" if actual else "EOF"
-                )
-                expected_value = (
-                    f"0x{expected[0]:02X} ({expected!r})"
-                    if expected else "EOF"
-                )
+                actual_value = f"0x{actual[0]:02X} ({actual!r})" if actual else "EOF"
+                expected_value = f"0x{expected[0]:02X} ({expected!r})" if expected else "EOF"
 
-                print("\nDatabase integrity: FAILED")
-                print(f"Reason: pi prefix mismatch at position {mismatch + 1:,}.")
-                print(f"Expected: {expected_value}")
-                print(f"Found:    {actual_value}")
+                UI.error("Database integrity: FAILED")
+                UI.stat("Reason", f"π prefix mismatch at {mismatch + 1:,}")
+                UI.stat("Expected", expected_value)
+                UI.stat("Found", actual_value)
                 return _repair_database(file_path) if repair else False
 
             checked = len(prefix)
@@ -235,9 +298,9 @@ def check_database_integrity(file_path: Path, repair: bool = False) -> bool:
                 is_last_chunk = file.tell() == file_size
 
                 if is_last_chunk:
-                    if chunk.endswith(b"\\r\\n"):
+                    if chunk.endswith(b"\r\n"):
                         chunk = chunk[:-2]
-                    elif chunk.endswith(b"\\n"):
+                    elif chunk.endswith(b"\n"):
                         chunk = chunk[:-1]
 
                 invalid_index = next(
@@ -256,22 +319,23 @@ def check_database_integrity(file_path: Path, repair: bool = False) -> bool:
                     context_end = min(len(chunk), invalid_index + 11)
                     context = chunk[context_start:context_end]
 
-                    print("\nDatabase integrity: FAILED")
-                    print("Reason: non-digit data detected.")
-                    print(f"Position: {position:,}")
-                    print(f"Byte:     0x{value:02X} ({value!r})")
-                    print(f"Context:  {context!r}")
+                    UI.error("Database integrity: FAILED")
+                    UI.stat("Reason", "Non-digit data detected")
+                    UI.stat("Position", f"{position:,}")
+                    UI.stat("Byte", f"0x{value:02X} ({value!r})")
+                    UI.stat("Context", repr(context))
                     return _repair_database(file_path) if repair else False
 
                 checked += len(chunk)
 
     except (OSError, UnicodeError) as exc:
-        print(f"\nDatabase integrity: FAILED\nReason: {exc}")
+        UI.error("Database integrity: FAILED")
+        UI.stat("Reason", str(exc))
         return False
 
-    print("\nDatabase integrity: OK")
-    print(f"Checked: {checked:,} characters")
-    print("Format: digits-only (314159...)")
+    UI.success("Database integrity: OK")
+    UI.stat("Checked", f"{checked:,} characters")
+    UI.stat("Format", "digits-only (314159...)")
     return True
 
 
@@ -279,22 +343,22 @@ def _repair_database(file_path: Path) -> bool:
     """Rebuild a corrupted database using its current digit count."""
     try:
         raw = file_path.read_bytes()
-        digit_count = sum(byte >= ord("0") and byte <= ord("9") for byte in raw)
+        digit_count = sum(ord("0") <= byte <= ord("9") for byte in raw)
 
         if digit_count < len(PI_PREFIX):
-            print("Repair failed: the database is too small to rebuild safely.")
+            UI.error("Repair failed: database is too small to rebuild safely.")
             return False
 
-        print(f"Repairing database automatically to {digit_count:,} digits...")
+        UI.warn(f"Corruption detected. Rebuilding {digit_count:,} digits...")
         start = time.perf_counter()
         write_pi(file_path, digit_count)
         elapsed = time.perf_counter() - start
-        print(f"Repair complete in {elapsed:.3f} s.")
-
+        UI.success(f"Repair complete in {elapsed:.3f} s.")
         return check_database_integrity(file_path, repair=False)
     except (OSError, ValueError) as exc:
-        print(f"Repair failed: {exc}")
+        UI.error(f"Repair failed: {exc}")
         return False
+
 
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
@@ -304,32 +368,38 @@ def generate_pi_file(file_path: Path) -> None:
     if digits <= 0:
         raise ValueError("total digits must be greater than zero")
 
-    print(f"\nGenerating exactly {digits:,} total digits of pi...")
-    print("Large values can require substantial CPU time and RAM.")
+    UI.header("PI GENERATOR", "Creating a fresh π dataset")
+    UI.info(f"Target: {digits:,} total digits")
+    UI.warn("Large values can require substantial CPU time and RAM.")
+
     start = time.perf_counter()
     write_pi(file_path, digits)
     elapsed = time.perf_counter() - start
 
-    print(f"Written: {file_path}")
-    print(f"Digits written: {digits:,} total digits")
-    print(f"Time: {elapsed:.3f} s")
+    UI.success(f"Written: {file_path}")
+    UI.stat("Digits", f"{digits:,}")
+    UI.stat("Time", f"{elapsed:.3f} s")
 
 
 def run_search(file_path: Path, pattern: str, label: str) -> None:
-    """Run an automatic search and show search statistics."""
+    """Run an automatic search and show polished search statistics."""
+    UI.header("PI SEARCH", f"{label.title()} lookup")
+
     start = time.perf_counter()
     position = auto_search(file_path, pattern, label)
     elapsed = time.perf_counter() - start
+    digits = _pi_digits_in_file(file_path)
 
     print_result(position)
 
-    print("\nSearch Statistics")
-    print("-" * 32)
-    print(f"Search:     {pattern}")
-    if position != -1:
-        print(f"Position:   {position:,}")
-    print(f"Dataset:    {_pi_digits_in_file(file_path):,} digits")
-    print(f"Time:       {elapsed:.4f} s")
+    UI.section("SEARCH STATISTICS")
+    UI.stat("Pattern", pattern)
+    UI.stat("Mode", label.upper())
+    UI.stat("Position", f"{position:,}" if position != -1 else "NOT FOUND")
+    UI.stat("Dataset", f"{digits:,} digits")
+    UI.stat("Time", f"{elapsed:.4f} s")
+    if elapsed > 0:
+        UI.stat("Throughput", f"{digits / 1024 / 1024 / elapsed:.2f} MiB/s")
 
 
 def run_benchmark(file_path: Path) -> None:
@@ -346,10 +416,10 @@ def run_benchmark(file_path: Path) -> None:
     if repeat <= 0:
         raise ValueError("repeats must be greater than zero")
 
-    print("\nBenchmark mode")
-    print("1. Single chunk size")
-    print("2. Compare chunk sizes")
-    mode = input("Select [2]: ").strip() or "2"
+    UI.header("BENCHMARK LAB", "Real-file performance test")
+    print(UI.paint("  [1] Single chunk size", UI.WHITE))
+    print(UI.paint("  [2] Compare 1 / 4 / 8 / 16 MiB", UI.WHITE))
+    mode = input("\nSelect [2]: ").strip() or "2"
 
     if mode == "1":
         chunk_text = input("Chunk size MiB [8]: ").strip() or "8"
@@ -360,58 +430,48 @@ def run_benchmark(file_path: Path) -> None:
         chunk_size = int(chunk_mib * 1024 * 1024)
         result = benchmark_search(file_path, pattern, chunk_size, repeat)
 
-        print("\nPI-FINDER Real File Benchmark")
-        print("-" * 40)
-        print(f"File:       {file_path}")
-        print(f"Size:       {format_bytes(file_path.stat().st_size)}")
-        print(f"Pattern:    {pattern}")
+        UI.section("RESULT")
+        UI.stat("File", str(file_path))
+        UI.stat("Size", format_bytes(file_path.stat().st_size))
+        UI.stat("Pattern", pattern)
         print_benchmark_result(result)
         return
 
     if mode == "2":
-        results = compare_chunk_sizes(
-            file_path,
-            pattern,
-            DEFAULT_CHUNK_SIZES,
-            repeat,
-        )
+        results = compare_chunk_sizes(file_path, pattern, DEFAULT_CHUNK_SIZES, repeat)
 
-        print("\nPI-FINDER Chunk Size Benchmark")
-        print("-" * 40)
-        print(f"File:       {file_path}")
-        print(f"Size:       {format_bytes(file_path.stat().st_size)}")
-        print(f"Pattern:    {pattern}")
-        print(f"Repeats:    {repeat}")
+        UI.section("CHUNK COMPARISON")
+        UI.stat("File", str(file_path))
+        UI.stat("Size", format_bytes(file_path.stat().st_size))
+        UI.stat("Pattern", pattern)
+        UI.stat("Repeats", str(repeat))
         print()
 
         for result in results:
-            print(f"[{format_bytes(int(result['chunk_size']))} chunk]")
+            print(UI.paint(f"  ▸ {format_bytes(int(result['chunk_size']))} chunk", UI.MAGENTA))
             print_benchmark_result(result)
             print()
 
         fastest = min(results, key=lambda item: float(item["time"]))
-        print(
-            "Fastest:    "
-            f"{format_bytes(int(fastest['chunk_size']))} chunk "
+        UI.success(
+            f"Fastest chunk: {format_bytes(int(fastest['chunk_size']))} "
             f"({float(fastest['time']):.4f} s)"
         )
         return
 
     raise ValueError("invalid benchmark mode")
 
+
 def database_menu(file_path: Path) -> None:
     """Interactive persistent database management menu."""
     while True:
-        print("\n================================")
-        print("       PI DATABASE")
-        print("================================")
-        print("1. Database info")
-        print("2. Continue generation (2x)")
-        print("3. Check database integrity")
-        print("4. Back")
-        print()
+        UI.header("PI DATABASE", "Storage & integrity controls")
+        print("  " + UI.paint("[1]", UI.CYAN) + " Database info")
+        print("  " + UI.paint("[2]", UI.CYAN) + " Continue generation (2×)")
+        print("  " + UI.paint("[3]", UI.CYAN) + " Check integrity + auto-repair")
+        print("  " + UI.paint("[4]", UI.CYAN) + " Back")
 
-        choice = input("Select: ").strip()
+        choice = input("\n  Select › ").strip()
 
         try:
             if choice == "1":
@@ -423,61 +483,62 @@ def database_menu(file_path: Path) -> None:
             elif choice == "4":
                 return
             else:
-                print("Invalid choice.")
+                UI.warn("Invalid choice. Select 1–4.")
         except (OSError, UnicodeError, ValueError) as exc:
-            print(f"Error: {exc}")
+            UI.error(f"Error: {exc}")
+
+        input("\n  Press Enter to continue...")
 
 
 def admin_mode() -> None:
     """PI-FINDER Easter egg: every input opens the Rickroll video."""
-    print("\n================================")
-    print("          ADMIN MODE")
-    print("================================")
-    print("Enter anything to continue.")
-    input("> ")
+    UI.header("ADMIN MODE", "Restricted administrator console")
+    input("  Enter anything to continue › ")
 
-    print("\nACCESS GRANTED.")
-    print("Initializing administrator privileges...")
-    print("RICKROLL.EXE")
+    print()
+    UI.success("ACCESS GRANTED.")
+    UI.info("Initializing administrator privileges...")
+    UI.warn("RICKROLL.EXE")
     webbrowser.open(RICKROLL_URL)
 
 
 def main() -> None:
+    UI.enable()
     file_path = Path(DEFAULT_PI_FILE)
 
     while True:
-        print("=" * 32)
-        print("          PI-FINDER")
-        print("=" * 32)
-        print(f"Pi file: {file_path}")
-        print(f"Database: {_pi_digits_in_file(file_path):,} digits")
-        print()
-        print("1. Search number")
-        print("2. Search word")
-        print("3. Generate pi")
-        print("4. Benchmark")
-        print("5. PI Database")
-        print("6. Admin mode")
-        print("7. Exit")
-        print()
+        digits = _pi_digits_in_file(file_path)
+        status = UI.paint("ONLINE", UI.GREEN) if file_path.exists() else UI.paint("EMPTY", UI.YELLOW)
 
-        choice = input("Select: ").strip()
+        UI.header("π  PI-FINDER", "Fast digit & word search engine")
+        print(f"  Database  {UI.paint(status, UI.WHITE)}")
+        print(f"  Digits    {UI.paint(f'{digits:,}', UI.CYAN)}")
+        print(f"  File      {UI.paint(str(file_path), UI.DIM)}")
+        print()
+        print("  " + UI.paint("[1]", UI.CYAN) + " Search number")
+        print("  " + UI.paint("[2]", UI.CYAN) + " Search word")
+        print("  " + UI.paint("[3]", UI.CYAN) + " Generate π")
+        print("  " + UI.paint("[4]", UI.CYAN) + " Benchmark Lab")
+        print("  " + UI.paint("[5]", UI.CYAN) + " PI Database")
+        print("  " + UI.paint("[6]", UI.MAGENTA) + " Admin mode")
+        print("  " + UI.paint("[7]", UI.RED) + " Exit")
+        print()
+        print(UI.paint("  ──────────────────────────────────────────────────────────", UI.DIM))
+
+        choice = input(UI.paint("  Select › ", UI.BOLD + UI.CYAN)).strip()
 
         try:
             if choice == "1":
-                pattern = input("Enter number: ").strip()
+                pattern = input("  Number › ").strip()
                 if not pattern:
-                    print("Number cannot be empty.\n")
+                    UI.error("Number cannot be empty.")
                     continue
-
-                print("\nSearching...")
                 run_search(file_path, pattern, "number")
 
             elif choice == "2":
-                word = input("Enter word: ").strip()
+                word = input("  Word (A-Z) › ").strip()
                 encoded = encode_word(word)
-                print(f"Encoded: {encoded}")
-                print("\nSearching...")
+                UI.info(f"Encoded: {encoded}")
                 run_search(file_path, encoded, "word")
 
             elif choice == "3":
@@ -493,17 +554,18 @@ def main() -> None:
                 admin_mode()
 
             elif choice == "7":
-                print("Goodbye!")
+                print()
+                UI.success("Goodbye. Keep searching π. π never ends.")
                 break
 
             else:
-                print("Invalid choice.")
+                UI.warn("Invalid choice. Select 1–7.")
 
         except (OSError, UnicodeError, ValueError) as exc:
-            print(f"Error: {exc}")
-            print("Please check your input and try again.")
+            UI.error(f"Error: {exc}")
+            UI.info("Check your input and try again.")
 
-        print()
+        input("\n  Press Enter to return to the main menu...")
 
 
 if __name__ == "__main__":
