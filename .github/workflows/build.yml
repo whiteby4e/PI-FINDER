@@ -82,3 +82,95 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: PI-FINDER-Linux.tar.gz
+
+  build-macos:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Intel Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          architecture: x64
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build Intel executable
+        run: pyinstaller --onefile --clean --name PI-FINDER-macOS-Intel pi_finder.py
+
+      - name: Upload Intel build
+        uses: actions/upload-artifact@v4
+        with:
+          name: PI-FINDER-macOS-Intel
+          path: dist/PI-FINDER-macOS-Intel
+
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Apple Silicon Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          architecture: arm64
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build Apple Silicon executable
+        run: pyinstaller --onefile --clean --name PI-FINDER-macOS-Apple-Silicon pi_finder.py
+
+      - name: Upload Apple Silicon build
+        uses: actions/upload-artifact@v4
+        with:
+          name: PI-FINDER-macOS-Apple-Silicon
+          path: dist/PI-FINDER-macOS-Apple-Silicon
+
+  package-macos:
+    needs:
+      - build-macos
+      - build-macos-arm64
+    runs-on: macos-14
+    steps:
+      - name: Download Intel build
+        uses: actions/download-artifact@v4
+        with:
+          name: PI-FINDER-macOS-Intel
+          path: intel
+
+      - name: Download Apple Silicon build
+        uses: actions/download-artifact@v4
+        with:
+          name: PI-FINDER-macOS-Apple-Silicon
+          path: arm64
+
+      - name: Create Universal macOS executable
+        run: |
+          chmod +x intel/PI-FINDER-macOS-Intel
+          chmod +x arm64/PI-FINDER-macOS-Apple-Silicon
+          lipo -create             intel/PI-FINDER-macOS-Intel             arm64/PI-FINDER-macOS-Apple-Silicon             -output PI-FINDER-macOS
+
+      - name: Package macOS release
+        run: |
+          mkdir -p release/PI-FINDER-macOS
+          cp PI-FINDER-macOS release/PI-FINDER-macOS/
+          cp pi.txt release/PI-FINDER-macOS/
+          chmod +x release/PI-FINDER-macOS/PI-FINDER-macOS
+          tar -czf PI-FINDER-macOS.tar.gz -C release PI-FINDER-macOS
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PI-FINDER-macOS
+          path: PI-FINDER-macOS.tar.gz
+
+      - name: Upload macOS release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PI-FINDER-macOS.tar.gz
