@@ -2,7 +2,7 @@
 
 A high-performance tool for searching numbers and encoded words inside the digits of **π (pi)**.
 
-> **Status:** 🚧 Early development — the search engine and performance benchmarks are the first priority.
+> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, and the text interface are implemented.
 
 ## What is PI-FINDER?
 
@@ -75,6 +75,26 @@ HELLO
 ```
 
 The encoded sequence can then be searched using the same search engine as Number Mode.
+
+
+## Interactive interface
+
+Run:
+
+```text
+py pi_finder.py
+```
+
+The main menu provides:
+
+1. **Search number** — search digits in the current `pi.txt`.
+2. **Search word** — encode A-Z with fixed-width A1Z26 and search the result.
+3. **Generate pi** — generate a new `pi.txt` dataset from a chosen number of digits.
+4. **Benchmark** — measure search time, throughput, and Python-traced peak allocations.
+5. **Admin mode** — a hidden Easter egg.
+6. **Exit**
+
+The Admin mode is intentionally a joke feature and is not part of the search engine.
 
 ## Important note about π
 
