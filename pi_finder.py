@@ -52,6 +52,16 @@ def _pi_digits_in_file(file_path: Path) -> int:
     if size == 0:
         return 0
 
+    # Do not count a trailing newline from a downloaded copy as a digit.
+    with file_path.open("rb") as file:
+        file.seek(-1, 2)
+        if file.read(1) == b"\\n":
+            size -= 1
+            if size > 0:
+                file.seek(-1, 2)
+                if file.read(1) == b"\\r":
+                    size -= 1
+
     return size
 
 
@@ -171,15 +181,15 @@ def continue_generation(file_path: Path) -> None:
 def check_database_integrity(file_path: Path) -> bool:
     """Check that pi.txt contains only the expected decimal digits of pi."""
     if not file_path.exists():
-        print("\nDatabase integrity: FAILED")
+        print("\\nDatabase integrity: FAILED")
         print("Reason: pi.txt does not exist.")
         return False
 
     try:
-        with file_path.open("r", encoding="ascii", newline="") as file:
+        with file_path.open("rb") as file:
             prefix = file.read(len(PI_PREFIX))
-            if prefix != PI_PREFIX:
-                print("\nDatabase integrity: FAILED")
+            if prefix != PI_PREFIX.encode("ascii"):
+                print("\\nDatabase integrity: FAILED")
                 print("Reason: invalid π prefix or corrupted dataset.")
                 return False
 
@@ -188,21 +198,28 @@ def check_database_integrity(file_path: Path) -> bool:
                 chunk = file.read(8 * 1024 * 1024)
                 if not chunk:
                     break
+
+                if file.tell() == file_path.stat().st_size:
+                    if chunk.endswith(b"\\r\\n"):
+                        chunk = chunk[:-2]
+                    elif chunk.endswith(b"\\n"):
+                        chunk = chunk[:-1]
+
                 if not chunk.isdigit():
-                    print("\nDatabase integrity: FAILED")
+                    print("\\nDatabase integrity: FAILED")
                     print(f"Reason: non-digit data detected after character {checked:,}.")
                     return False
+
                 checked += len(chunk)
 
     except (OSError, UnicodeError) as exc:
-        print(f"\nDatabase integrity: FAILED\nReason: {exc}")
+        print(f"\\nDatabase integrity: FAILED\\nReason: {exc}")
         return False
 
-    print("\nDatabase integrity: OK")
+    print("\\nDatabase integrity: OK")
     print(f"Checked: {checked:,} characters")
     print("Format: continuous decimal digits (3.14159...)")
     return True
-
 
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
