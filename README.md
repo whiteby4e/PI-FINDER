@@ -2,7 +2,7 @@
 
 A high-performance tool for searching numbers and encoded words inside the digits of **π (pi)**.
 
-> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, automatic dataset growth, and the text interface are implemented.
+> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, automatic dataset growth, persistent database management, and the text interface are implemented.
 
 ## What is PI-FINDER?
 
@@ -25,7 +25,7 @@ pi.txt
 
 **This is NOT the main or complete π database.** It is the dataset currently included with the project and is mainly provided as a starting point.
 
-You can increase the dataset size by generating more digits of π. The program can also increase it automatically when a searched number or word is not found.
+You can increase the dataset size manually, use the persistent database tools to grow it, or let the program increase it automatically when a searched number or word is not found.
 
 ## How it works
 
@@ -37,7 +37,7 @@ PI-FINDER
 │   └── Load existing π data
 │
 ├── STORAGE
-│   └── Manage large π datasets
+│   └── Manage persistent π dataset
 │
 ├── SEARCH ENGINE
 │   └── Fast pattern searching
@@ -102,6 +102,87 @@ The automatic search currently doubles the dataset size when it needs to grow, u
 
 You can also manually generate a larger dataset whenever you want.
 
+## Level 11 — Persistent π Database
+
+PI-FINDER now has a dedicated database management menu for the persistent `pi.txt` dataset.
+
+### Database Info
+
+Shows:
+
+- Current number of π digits
+- File size
+- Last update time
+- Current database path
+- Progress toward the automatic 10-million-digit limit
+
+Example:
+
+~~~text
+PI-FINDER DATABASE
+--------------------------------
+Status:      AVAILABLE
+Database:    pi.txt
+Digits:      160,000
+File size:   157 KB
+Last update: ...
+Progress:    [....................] 160,000/10,000,000
+~~~
+
+### Continue Generation
+
+The database can be expanded with **Continue generation (2x)**.
+
+For example:
+
+~~~text
+160,000
+   ↓
+320,000
+   ↓
+640,000
+   ↓
+1,280,000
+   ↓
+...
+~~~
+
+This uses the current database size and grows it up to the automatic generation limit.
+
+### Search Statistics
+
+Searches now report statistics such as:
+
+~~~text
+Search Statistics
+--------------------------------
+Search:     1609
+Position:   396
+Dataset:    160,090 digits
+Time:       0.0032 s
+~~~
+
+For automatic searches, the reported time covers the complete search operation, including any additional π generation required.
+
+### Database Integrity
+
+The database manager can check whether `pi.txt`:
+
+- Exists
+- Has the expected `3.<decimal digits>` structure
+- Starts with the known decimal prefix of π
+- Contains only decimal digits after the decimal point
+
+Example:
+
+~~~text
+Database integrity: OK
+Checked: 160,002 characters
+Format: 3.<decimal digits>
+~~~
+
+This is a structural integrity check; it does not mathematically prove every stored digit is correct.
+
 ## Interactive interface
 
 Run `py pi_finder.py`.
@@ -112,8 +193,9 @@ The main menu provides:
 2. **Search word** — encode A-Z with fixed-width A1Z26 and automatically generate more π if needed.
 3. **Generate pi** — generate a new `pi.txt` dataset from a chosen number of digits.
 4. **Benchmark** — measure search time, throughput, and Python-traced peak allocations.
-5. **Admin mode** — a joke Easter egg.
-6. **Exit**
+5. **PI Database** — inspect, grow, and validate the persistent π dataset.
+6. **Admin mode** — a joke Easter egg.
+7. **Exit**
 
 ## Important note about π
 
@@ -144,6 +226,8 @@ Metrics include search speed, π generation speed, memory usage, CPU usage, data
 - 🔢 Large π datasets
 - 🔤 Number and word searching
 - 🤖 Automatic π dataset generation
+- 🗄️ Persistent π database management
+- 🔍 Database integrity checking
 - 📊 Reproducible performance benchmarks
 - 🐍 Python-friendly development, with faster compiled components where useful
 
