@@ -16,6 +16,8 @@ DEFAULT_AUTO_DIGITS = 100_000
 AUTO_MAX_DIGITS = 10_000_000
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
+PI_PREFIX = "3.14159265358979323846264338327950288419716939937510"
+
 
 def encode_word(word: str) -> str:
     """Encode A-Z as fixed-width A1Z26 digits."""
@@ -82,15 +84,10 @@ def auto_search(
 ) -> int:
     """Search now and automatically generate more pi when not found."""
     path = Path(file_path)
-
     current_digits = _pi_digits_in_file(path)
 
     if current_digits == 0:
-        current_digits = _generate_more_pi(
-            path,
-            0,
-            len(pattern),
-        )
+        current_digits = _generate_more_pi(path, 0, len(pattern))
 
     while True:
         print(f"Searching {current_digits:,} pi digits...")
@@ -122,6 +119,92 @@ def print_result(position: int) -> None:
         print(f"Found at position: {position:,}")
 
 
+def database_info(file_path: Path) -> None:
+    """Display information about the current pi database."""
+    digits = _pi_digits_in_file(file_path)
+
+    print("\nPI-FINDER DATABASE")
+    print("-" * 32)
+
+    if not file_path.exists():
+        print("Status:      NOT FOUND")
+        print("Database:    pi.txt")
+        print("Digits:      0")
+        print("File size:   0 B")
+        print("\nNo database exists yet.")
+        return
+
+    size = file_path.stat().st_size
+    modified = time.strftime(
+        "%Y-%m-%d %H:%M:%S",
+        time.localtime(file_path.stat().st_mtime),
+    )
+
+    print("Status:      AVAILABLE")
+    print(f"Database:    {file_path}")
+    print(f"Digits:      {digits:,}")
+    print(f"File size:   {format_bytes(size)}")
+    print(f"Last update: {modified}")
+
+    if digits:
+        progress = min(100, digits / AUTO_MAX_DIGITS * 100)
+        filled = int(progress / 5)
+        bar = "[" + "#" * filled + "." * (20 - filled) + "]"
+        print(f"Progress:    {bar} {digits:,}/{AUTO_MAX_DIGITS:,}")
+
+
+def continue_generation(file_path: Path) -> None:
+    """Double the current database size and regenerate pi."""
+    current_digits = _pi_digits_in_file(file_path)
+
+    if current_digits == 0:
+        target = DEFAULT_AUTO_DIGITS
+    else:
+        target = min(current_digits * 2, AUTO_MAX_DIGITS)
+
+    if target <= current_digits:
+        print(f"Database is already at the {AUTO_MAX_DIGITS:,}-digit limit.")
+        return
+
+    _generate_more_pi(file_path, current_digits, target)
+
+
+def check_database_integrity(file_path: Path) -> bool:
+    """Check basic structure and the known decimal prefix of pi."""
+    if not file_path.exists():
+        print("\nDatabase integrity: FAILED")
+        print("Reason: pi.txt does not exist.")
+        return False
+
+    try:
+        with file_path.open("r", encoding="ascii", newline="") as file:
+            prefix = file.read(len(PI_PREFIX))
+            if prefix != PI_PREFIX:
+                print("\nDatabase integrity: FAILED")
+                print("Reason: invalid π prefix or corrupted header.")
+                return False
+
+            checked = len(prefix)
+            while True:
+                chunk = file.read(8 * 1024 * 1024)
+                if not chunk:
+                    break
+                if not chunk.isdigit():
+                    print("\nDatabase integrity: FAILED")
+                    print(f"Reason: non-digit data detected after byte {checked:,}.")
+                    return False
+                checked += len(chunk)
+
+    except (OSError, UnicodeError) as exc:
+        print(f"\nDatabase integrity: FAILED\nReason: {exc}")
+        return False
+
+    print("\nDatabase integrity: OK")
+    print(f"Checked: {checked:,} characters")
+    print("Format: 3.<decimal digits>")
+    return True
+
+
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
     raw_digits = input("Digits after decimal point: ").strip()
@@ -141,6 +224,23 @@ def generate_pi_file(file_path: Path) -> None:
     print(f"Time: {elapsed:.3f} s")
 
 
+def run_search(file_path: Path, pattern: str, label: str) -> None:
+    """Run an automatic search and show search statistics."""
+    start = time.perf_counter()
+    position = auto_search(file_path, pattern, label)
+    elapsed = time.perf_counter() - start
+
+    print_result(position)
+
+    print("\nSearch Statistics")
+    print("-" * 32)
+    print(f"Search:     {pattern}")
+    if position != -1:
+        print(f"Position:   {position:,}")
+    print(f"Dataset:    {_pi_digits_in_file(file_path):,} digits")
+    print(f"Time:       {elapsed:.4f} s")
+
+
 def run_benchmark(file_path: Path) -> None:
     """Benchmark a search through the current pi file."""
     if not file_path.exists():
@@ -156,8 +256,6 @@ def run_benchmark(file_path: Path) -> None:
         raise ValueError("repeats must be greater than zero")
 
     file_size = file_path.stat().st_size
-
-    # Warm-up search is not included in the timed measurement.
     first_position = search_text(file_path, pattern)
 
     tracemalloc.start()
@@ -191,6 +289,35 @@ def run_benchmark(file_path: Path) -> None:
     print(f"Repeats:    {repeat}")
 
 
+def database_menu(file_path: Path) -> None:
+    """Interactive persistent database management menu."""
+    while True:
+        print("\n================================")
+        print("       PI DATABASE")
+        print("================================")
+        print("1. Database info")
+        print("2. Continue generation (2x)")
+        print("3. Check database integrity")
+        print("4. Back")
+        print()
+
+        choice = input("Select: ").strip()
+
+        try:
+            if choice == "1":
+                database_info(file_path)
+            elif choice == "2":
+                continue_generation(file_path)
+            elif choice == "3":
+                check_database_integrity(file_path)
+            elif choice == "4":
+                return
+            else:
+                print("Invalid choice.")
+        except (OSError, UnicodeError, ValueError) as exc:
+            print(f"Error: {exc}")
+
+
 def admin_mode() -> None:
     """PI-FINDER Easter egg: every input opens the Rickroll video."""
     print("\n================================")
@@ -213,13 +340,15 @@ def main() -> None:
         print("          PI-FINDER")
         print("=" * 32)
         print(f"Pi file: {file_path}")
+        print(f"Database: {_pi_digits_in_file(file_path):,} digits")
         print()
         print("1. Search number")
         print("2. Search word")
         print("3. Generate pi")
         print("4. Benchmark")
-        print("5. Admin mode")
-        print("6. Exit")
+        print("5. PI Database")
+        print("6. Admin mode")
+        print("7. Exit")
         print()
 
         choice = input("Select: ").strip()
@@ -232,16 +361,14 @@ def main() -> None:
                     continue
 
                 print("\nSearching...")
-                position = auto_search(file_path, pattern, "number")
-                print_result(position)
+                run_search(file_path, pattern, "number")
 
             elif choice == "2":
                 word = input("Enter word: ").strip()
                 encoded = encode_word(word)
                 print(f"Encoded: {encoded}")
                 print("\nSearching...")
-                position = auto_search(file_path, encoded, "word")
-                print_result(position)
+                run_search(file_path, encoded, "word")
 
             elif choice == "3":
                 generate_pi_file(file_path)
@@ -250,16 +377,19 @@ def main() -> None:
                 run_benchmark(file_path)
 
             elif choice == "5":
-                admin_mode()
+                database_menu(file_path)
 
             elif choice == "6":
+                admin_mode()
+
+            elif choice == "7":
                 print("Goodbye!")
                 break
 
             else:
                 print("Invalid choice.")
 
-        except (OSError, UnicodeEncodeError, ValueError) as exc:
+        except (OSError, UnicodeError, ValueError) as exc:
             print(f"Error: {exc}")
 
         print()
