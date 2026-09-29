@@ -46,14 +46,8 @@ def search_file(
 
 
 def search_text(file_path: str | Path, pattern: str) -> int:
-    """Search for a pattern, accepting either digits or a 3.n pi prefix."""
-    if pattern.startswith("3.") and len(pattern) > 2:
-        pattern = pattern.replace(".", "", 1)
-
-        # The file starts with 3., so preserve its position in the search.
-        return search_file(file_path, ("3." + pattern[1:]).encode("ascii"))
-
-    return search_file(file_path, pattern.encode("ascii"))
+    """Search for digits, ignoring a decimal point in input."""
+    return search_file(file_path, pattern.replace(".", "").encode("ascii"))
 
 
 def main() -> None:
@@ -63,7 +57,7 @@ def main() -> None:
         description="Search a pattern inside a large pi file."
     )
     parser.add_argument("file", help="Path to the pi digit file")
-    parser.add_argument("pattern", help="Digits or a 3.n pi prefix to search for")
+    parser.add_argument("pattern", help="Digits or a decimal representation")
     parser.add_argument(
         "--chunk-size",
         type=int,
