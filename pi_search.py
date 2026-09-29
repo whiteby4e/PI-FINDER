@@ -13,12 +13,7 @@ def search_file(
     pattern: bytes,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> int:
-    """Return the zero-based position of pattern in a file, or -1.
-
-    The file is read in chunks, so memory usage stays roughly bounded by
-    chunk_size plus the pattern overlap. Matches spanning two chunks are
-    handled correctly.
-    """
+    """Return the zero-based position of pattern in a file, or -1."""
     if not pattern:
         return 0
 
@@ -26,8 +21,7 @@ def search_file(
         raise ValueError("chunk_size must be greater than zero")
 
     path = Path(file_path)
-    pattern_length = len(pattern)
-    overlap = pattern_length - 1
+    overlap = len(pattern) - 1
     position = 0
     tail = b""
 
@@ -45,27 +39,31 @@ def search_file(
 
             if overlap:
                 tail = data[-overlap:]
-            else:
-                tail = b""
 
             position += len(chunk)
 
     return -1
 
 
-def search_text(file_path: str | Path, pattern: str, encoding: str = "ascii") -> int:
-    """Search for a text pattern in a digit file."""
-    return search_file(file_path, pattern.encode(encoding))
+def search_text(file_path: str | Path, pattern: str) -> int:
+    """Search for a pattern, accepting either digits or a 3.n pi prefix."""
+    if pattern.startswith("3.") and len(pattern) > 2:
+        pattern = pattern.replace(".", "", 1)
+
+        # The file starts with 3., so preserve its position in the search.
+        return search_file(file_path, ("3." + pattern[1:]).encode("ascii"))
+
+    return search_file(file_path, pattern.encode("ascii"))
 
 
 def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Search a digit pattern inside a large pi file."
+        description="Search a pattern inside a large pi file."
     )
     parser.add_argument("file", help="Path to the pi digit file")
-    parser.add_argument("pattern", help="Digits to search for")
+    parser.add_argument("pattern", help="Digits or a 3.n pi prefix to search for")
     parser.add_argument(
         "--chunk-size",
         type=int,
@@ -74,7 +72,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    position = search_text(args.file, args.pattern, encoding="ascii")
+    position = search_text(args.file, args.pattern)
 
     if position == -1:
         print("Pattern not found.")
