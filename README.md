@@ -23,9 +23,9 @@ pi.txt
 └── Digits: ~160,000
 ~~~
 
-The dataset is stored as a single sequential text file and can be searched in chunks, so the whole dataset does not need to be loaded into RAM at once.
+**This is NOT the main or complete π database.** It is the dataset currently included with the project and is mainly provided as a starting point.
 
-The dataset can also grow automatically when a search does not find the requested pattern.
+You can increase the dataset size by generating more digits of π. The program can also increase it automatically when a searched number or word is not found.
 
 ## How it works
 
@@ -99,6 +99,8 @@ Position: ...
 If `pi.txt` does not exist, PI-FINDER starts by generating a default dataset of **100,000 digits**.
 
 The automatic search currently doubles the dataset size when it needs to grow, up to a safety limit of **10,000,000 digits**.
+
+You can also manually generate a larger dataset whenever you want.
 
 ## Interactive interface
 
