@@ -1,0 +1,84 @@
+name: Build PI-FINDER
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build Windows executable
+        run: pyinstaller --onefile --clean --name PI-FINDER-Windows pi_finder.py
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release\PI-FINDER-Windows | Out-Null
+          Copy-Item dist\PI-FINDER-Windows.exe release\PI-FINDER-Windows\
+          Copy-Item pi.txt release\PI-FINDER-Windows\
+          Compress-Archive -Path release\PI-FINDER-Windows -DestinationPath PI-FINDER-Windows.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PI-FINDER-Windows
+          path: PI-FINDER-Windows.zip
+
+      - name: Upload Windows release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PI-FINDER-Windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build Linux executable
+        run: pyinstaller --onefile --clean --name PI-FINDER-Linux pi_finder.py
+
+      - name: Package Linux release
+        run: |
+          mkdir -p release/PI-FINDER-Linux
+          cp dist/PI-FINDER-Linux release/PI-FINDER-Linux/
+          cp pi.txt release/PI-FINDER-Linux/
+          tar -czf PI-FINDER-Linux.tar.gz -C release PI-FINDER-Linux
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PI-FINDER-Linux
+          path: PI-FINDER-Linux.tar.gz
+
+      - name: Upload Linux release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PI-FINDER-Linux.tar.gz
