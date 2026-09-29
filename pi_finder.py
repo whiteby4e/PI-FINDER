@@ -96,14 +96,8 @@ def auto_search(
     current_digits = _pi_digits_in_file(path)
 
     if current_digits:
-        if not check_database_integrity(path):
-            print(f"Rebuilding the {current_digits:,}-digit database...")
-            start = time.perf_counter()
-            write_pi(path, current_digits)
-            elapsed = time.perf_counter() - start
-            print(f"Rebuilt {current_digits:,} digits in {elapsed:.3f} s.")
-            if not check_database_integrity(path):
-                raise ValueError("rebuilt pi database failed integrity check")
+        if not check_database_integrity(path, repair=True):
+            raise ValueError("pi database could not be repaired")
 
     if current_digits == 0:
         current_digits = _generate_more_pi(path, 0, len(pattern))
@@ -188,8 +182,8 @@ def continue_generation(file_path: Path) -> None:
     _generate_more_pi(file_path, current_digits, target)
 
 
-def check_database_integrity(file_path: Path) -> bool:
-    """Check the dataset and report the exact location of invalid bytes."""
+def check_database_integrity(file_path: Path, repair: bool = False) -> bool:
+    """Check the dataset and optionally rebuild it when corruption is found."""
     if not file_path.exists():
         print("\nDatabase integrity: FAILED")
         print("Reason: pi.txt does not exist.")
@@ -218,10 +212,10 @@ def check_database_integrity(file_path: Path) -> bool:
                 )
 
                 print("\nDatabase integrity: FAILED")
-                print(f"Reason: π prefix mismatch at position {mismatch + 1:,}.")
+                print(f"Reason: pi prefix mismatch at position {mismatch + 1:,}.")
                 print(f"Expected: {expected_value}")
                 print(f"Found:    {actual_value}")
-                return False
+                return _repair_database(file_path) if repair else False
 
             checked = len(prefix)
             file_size = file_path.stat().st_size
@@ -241,7 +235,11 @@ def check_database_integrity(file_path: Path) -> bool:
                         chunk = chunk[:-1]
 
                 invalid_index = next(
-                    (index for index, byte in enumerate(chunk) if byte < ord("0") or byte > ord("9")),
+                    (
+                        index
+                        for index, byte in enumerate(chunk)
+                        if byte < ord("0") or byte > ord("9")
+                    ),
                     None,
                 )
 
@@ -257,7 +255,7 @@ def check_database_integrity(file_path: Path) -> bool:
                     print(f"Position: {position:,}")
                     print(f"Byte:     0x{value:02X} ({value!r})")
                     print(f"Context:  {context!r}")
-                    return False
+                    return _repair_database(file_path) if repair else False
 
                 checked += len(chunk)
 
@@ -267,8 +265,31 @@ def check_database_integrity(file_path: Path) -> bool:
 
     print("\nDatabase integrity: OK")
     print(f"Checked: {checked:,} characters")
-    print("Format: continuous decimal digits (3.14159...)")
+    print("Format: digits-only (314159...)")
     return True
+
+
+def _repair_database(file_path: Path) -> bool:
+    """Rebuild a corrupted database using its current digit count."""
+    try:
+        raw = file_path.read_bytes()
+        digit_count = sum(byte >= ord("0") and byte <= ord("9") for byte in raw)
+
+        if digit_count < len(PI_PREFIX):
+            print("Repair failed: the database is too small to rebuild safely.")
+            return False
+
+        print(f"Repairing database automatically to {digit_count:,} digits...")
+        start = time.perf_counter()
+        write_pi(file_path, digit_count)
+        elapsed = time.perf_counter() - start
+        print(f"Repair complete in {elapsed:.3f} s.")
+
+        return check_database_integrity(file_path, repair=False)
+    except (OSError, ValueError) as exc:
+        print(f"Repair failed: {exc}")
+        return False
+
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
     raw_digits = input("Total pi digits (including the leading 3): ").strip()
@@ -373,7 +394,7 @@ def database_menu(file_path: Path) -> None:
             elif choice == "2":
                 continue_generation(file_path)
             elif choice == "3":
-                check_database_integrity(file_path)
+                check_database_integrity(file_path, repair=True)
             elif choice == "4":
                 return
             else:
