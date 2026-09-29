@@ -91,9 +91,19 @@ def auto_search(
     pattern: str,
     label: str = "number",
 ) -> int:
-    """Search now and automatically generate more pi when not found."""
+    """Search and grow a verified digits-only pi database when needed."""
     path = Path(file_path)
     current_digits = _pi_digits_in_file(path)
+
+    if current_digits:
+        if not check_database_integrity(path):
+            print(f"Rebuilding the {current_digits:,}-digit database...")
+            start = time.perf_counter()
+            write_pi(path, current_digits)
+            elapsed = time.perf_counter() - start
+            print(f"Rebuilt {current_digits:,} digits in {elapsed:.3f} s.")
+            if not check_database_integrity(path):
+                raise ValueError("rebuilt pi database failed integrity check")
 
     if current_digits == 0:
         current_digits = _generate_more_pi(path, 0, len(pattern))
@@ -261,20 +271,20 @@ def check_database_integrity(file_path: Path) -> bool:
     return True
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
-    raw_digits = input("Digits after decimal point: ").strip()
+    raw_digits = input("Total pi digits (including the leading 3): ").strip()
     digits = int(raw_digits)
 
-    if digits < 0:
-        raise ValueError("digits must be non-negative")
+    if digits <= 0:
+        raise ValueError("total digits must be greater than zero")
 
-    print(f"\nGenerating {digits:,} digits of pi...")
+    print(f"\nGenerating exactly {digits:,} total digits of pi...")
     print("Large values can require substantial CPU time and RAM.")
     start = time.perf_counter()
     write_pi(file_path, digits)
     elapsed = time.perf_counter() - start
 
     print(f"Written: {file_path}")
-    print(f"Digits written: {digits:,}")
+    print(f"Digits written: {digits:,} total digits")
     print(f"Time: {elapsed:.3f} s")
 
 
