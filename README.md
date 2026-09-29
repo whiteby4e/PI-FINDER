@@ -11,15 +11,25 @@ PI-FINDER is an open-source project designed to search for:
 - 🔢 **Numbers** — find a numeric sequence inside the digits of π.
 - 🔤 **Words** — encode a word into digits and search for the resulting sequence in π.
 
-The project is being designed around one main goal:
-
 > **Search as fast as possible, while keeping the system practical for large amounts of π data.**
+
+## Current π Dataset
+
+The repository currently includes a π dataset of approximately **157 KB**, containing about **160,000 decimal digits**.
+
+~~~text
+pi.txt
+├── Size: ~157 KB
+└── Digits: ~160,000
+~~~
+
+The dataset is stored as a single sequential text file and can be searched in chunks, so the whole dataset does not need to be loaded into RAM at once.
+
+The dataset can also grow automatically when a search does not find the requested pattern.
 
 ## How it works
 
-PI-FINDER is planned as separate components:
-
-```text
+~~~text
 PI-FINDER
 │
 ├── π ENGINE
@@ -37,7 +47,7 @@ PI-FINDER
 │
 └── USER INTERFACE
     └── Search results & controls
-```
+~~~
 
 The **Number** and **Word** modes use the same core search engine. Word mode only converts its input into digits before searching.
 
@@ -45,23 +55,17 @@ The **Number** and **Word** modes use the same core search engine. Word mode onl
 
 ### Number Mode
 
-Example:
-
-```text
+~~~text
 Input: 123456789
 Result: Found
 Position: ...
-```
-
-The position refers to the location of the sequence within the searched digits of π.
+~~~
 
 ### Word Mode
 
 A word can be converted to a fixed-width numeric representation.
 
-For example, using two-digit A1Z26 encoding:
-
-```text
+~~~text
 A = 01
 B = 02
 ...
@@ -72,19 +76,15 @@ HELLO
 08 05 12 12 15
 ↓
 0805121215
-```
+~~~
 
 The encoded sequence is then searched using the same search engine as Number Mode.
 
 ## Automatic π generation
 
-Search is designed to be automatic.
-
 When Number Mode or Word Mode does not find a pattern in the current `pi.txt`, PI-FINDER automatically generates a larger π dataset and searches again.
 
-Example:
-
-```text
+~~~text
 Enter number: 123456789
 
 Searching 100,000 pi digits...
@@ -94,21 +94,15 @@ Generating pi to 200,000 digits...
 Searching 200,000 pi digits...
 FOUND!
 Position: ...
-```
+~~~
 
 If `pi.txt` does not exist, PI-FINDER starts by generating a default dataset of **100,000 digits**.
 
-The automatic search currently doubles the dataset size when it needs to grow, up to a safety limit of **10,000,000 digits**. This prevents an accidental search from generating an unlimited amount of data and consuming excessive resources.
-
-Manual π generation is still available from the menu when a specific dataset size is wanted.
+The automatic search currently doubles the dataset size when it needs to grow, up to a safety limit of **10,000,000 digits**.
 
 ## Interactive interface
 
-Run:
-
-```text
-py pi_finder.py
-```
+Run `py pi_finder.py`.
 
 The main menu provides:
 
@@ -119,24 +113,9 @@ The main menu provides:
 5. **Admin mode** — a joke Easter egg.
 6. **Exit**
 
-The Admin mode is intentionally a joke feature and is not part of the search engine.
-
 ## Important note about π
 
 π has infinitely many decimal digits, but a computer can only search a finite amount at a time.
-
-Therefore, PI-FINDER will report results within the **searched range**.
-
-For example:
-
-```text
-FOUND
-Position: 483,291
-
-NOT FOUND
-Searched: 10,000,000 digits
-Automatic generation limit reached.
-```
 
 **NOT FOUND does not mean that the sequence never occurs anywhere in π.**
 
@@ -146,48 +125,14 @@ It is also not currently proven that π contains every possible finite digit seq
 
 Performance is a core part of this project.
 
-Before choosing the final search algorithm, PI-FINDER will benchmark different approaches using the same π datasets.
-
 Planned benchmark sizes:
-
 - 1 MB
 - 10 MB
 - 100 MB
 - 1 GB
 - Larger datasets when practical
 
-Metrics will include:
-
-- Search speed
-- π generation speed
-- Memory usage
-- CPU usage
-- Dataset loading speed
-- Repeated-query performance
-
-The project will prefer measured performance over assumptions about which algorithm is theoretically fastest.
-
-## Planned architecture
-
-### Phase 1 — Search Engine
-
-Build and benchmark the core digit-search system.
-
-### Phase 2 — π Data
-
-Add efficient generation/loading and chunked storage for large π datasets.
-
-### Phase 3 — Word Encoding
-
-Add word-to-number encodings and integrate them with the search engine.
-
-### Phase 4 — Optimization
-
-Improve performance for both single searches and repeated searches.
-
-### Phase 5 — User Interface
-
-Build a clean interface for searching numbers and words.
+Metrics include search speed, π generation speed, memory usage, CPU usage, dataset loading speed, and repeated-query performance.
 
 ## Project goals
 
