@@ -45,9 +45,17 @@ def search_file(
     return -1
 
 
-def search_text(file_path: str | Path, pattern: str) -> int:
-    """Search for digits, ignoring a decimal point in input."""
-    return search_file(file_path, pattern.replace(".", "").encode("ascii"))
+def search_text(
+    file_path: str | Path,
+    pattern: str,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+) -> int:
+    """Search for digits, ignoring decimal points in input."""
+    return search_file(
+        file_path,
+        pattern.replace(".", "").encode("ascii"),
+        chunk_size,
+    )
 
 
 def main() -> None:
@@ -66,7 +74,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    position = search_text(args.file, args.pattern)
+    position = search_text(args.file, args.pattern, args.chunk_size)
 
     if position == -1:
         print("Pattern not found.")
