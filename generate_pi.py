@@ -48,7 +48,7 @@ def binary_split(a: int, b: int) -> tuple[int, int, int]:
 
 
 def pi_digits(digits: int) -> str:
-    """Return pi with exactly digits after the decimal point."""
+    """Return pi as a continuous digit string."""
     if digits < 0:
         raise ValueError("digits must be non-negative")
     if digits == 0:
@@ -58,7 +58,7 @@ def pi_digits(digits: int) -> str:
     total_digits = digits + guard
     terms = int(total_digits / DIGITS_PER_TERM) + 1
 
-    p, q, t = binary_split(0, terms)
+    _, q, t = binary_split(0, terms)
 
     # pi = (426880 * sqrt(10005) * Q) / T
     sqrt_scaled = math.isqrt(10005 * 10 ** (2 * total_digits))
@@ -70,11 +70,11 @@ def pi_digits(digits: int) -> str:
 
     integer_part = text[:-total_digits]
     fraction = text[-total_digits:][:digits]
-    return integer_part + "." + fraction
+    return integer_part + fraction
 
 
 def write_pi(file_path: str | Path, digits: int) -> None:
-    """Generate pi and write it to a text file."""
+    """Generate pi and write it as one continuous digit dataset."""
     text = pi_digits(digits)
     path = Path(file_path)
     with path.open("w", encoding="ascii", newline="") as file:
