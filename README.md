@@ -15,12 +15,12 @@ PI-FINDER is an open-source project designed to search for:
 
 ## Current π Dataset
 
-The repository currently includes a π dataset of approximately **157 KB**, containing about **160,000 decimal digits**.
+The repository currently includes a π dataset of approximately **157 KB**, containing about **1,131,308 decimal digits**.
 
 ~~~text
 pi.txt
 ├── Size: ~157 KB
-└── Digits: ~160,000
+└── Digits: ~1,131,308
 ~~~
 
 **This is NOT the main or complete π database.** It is the dataset currently included with the project and is mainly provided as a starting point.
@@ -123,10 +123,10 @@ PI-FINDER DATABASE
 --------------------------------
 Status:      AVAILABLE
 Database:    pi.txt
-Digits:      160,000
+Digits:      1,131,308
 File size:   157 KB
 Last update: ...
-Progress:    [....................] 160,000/10,000,000
+Progress:    [##..................] 1,131,308/10,000,000
 ~~~
 
 ### Continue Generation
@@ -158,7 +158,7 @@ Search Statistics
 --------------------------------
 Search:     1609
 Position:   396
-Dataset:    160,090 digits
+Dataset:    1,131,308 digits
 Time:       0.0032 s
 ~~~
 
@@ -177,7 +177,7 @@ Example:
 
 ~~~text
 Database integrity: OK
-Checked: 160,002 characters
+Checked: 1,131,308 characters
 Format: 3.<decimal digits>
 ~~~
 
