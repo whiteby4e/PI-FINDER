@@ -2,7 +2,7 @@
 
 A high-performance tool for searching numbers and encoded words inside the digits of **π (pi)**.
 
-> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, and the text interface are implemented.
+> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, automatic dataset growth, and the text interface are implemented.
 
 ## What is PI-FINDER?
 
@@ -39,7 +39,7 @@ PI-FINDER
     └── Search results & controls
 ```
 
-The **Number** and **Word** modes will eventually use the same core search engine. Word mode only needs to convert its input into digits before searching.
+The **Number** and **Word** modes use the same core search engine. Word mode only converts its input into digits before searching.
 
 ## Search modes
 
@@ -74,8 +74,33 @@ HELLO
 0805121215
 ```
 
-The encoded sequence can then be searched using the same search engine as Number Mode.
+The encoded sequence is then searched using the same search engine as Number Mode.
 
+## Automatic π generation
+
+Search is designed to be automatic.
+
+When Number Mode or Word Mode does not find a pattern in the current `pi.txt`, PI-FINDER automatically generates a larger π dataset and searches again.
+
+Example:
+
+```text
+Enter number: 123456789
+
+Searching 100,000 pi digits...
+Not found in the current number dataset.
+Generating pi to 200,000 digits...
+
+Searching 200,000 pi digits...
+FOUND!
+Position: ...
+```
+
+If `pi.txt` does not exist, PI-FINDER starts by generating a default dataset of **100,000 digits**.
+
+The automatic search currently doubles the dataset size when it needs to grow, up to a safety limit of **10,000,000 digits**. This prevents an accidental search from generating an unlimited amount of data and consuming excessive resources.
+
+Manual π generation is still available from the menu when a specific dataset size is wanted.
 
 ## Interactive interface
 
@@ -87,11 +112,11 @@ py pi_finder.py
 
 The main menu provides:
 
-1. **Search number** — search digits in the current `pi.txt`.
-2. **Search word** — encode A-Z with fixed-width A1Z26 and search the result.
+1. **Search number** — search digits in `pi.txt`, automatically generating more π if needed.
+2. **Search word** — encode A-Z with fixed-width A1Z26 and automatically generate more π if needed.
 3. **Generate pi** — generate a new `pi.txt` dataset from a chosen number of digits.
 4. **Benchmark** — measure search time, throughput, and Python-traced peak allocations.
-5. **Admin mode** — a hidden Easter egg.
+5. **Admin mode** — a joke Easter egg.
 6. **Exit**
 
 The Admin mode is intentionally a joke feature and is not part of the search engine.
@@ -109,7 +134,8 @@ FOUND
 Position: 483,291
 
 NOT FOUND
-Searched: 100,000,000 digits
+Searched: 10,000,000 digits
+Automatic generation limit reached.
 ```
 
 **NOT FOUND does not mean that the sequence never occurs anywhere in π.**
@@ -170,6 +196,7 @@ Build a clean interface for searching numbers and words.
 - 🧠 Memory-aware architecture
 - 🔢 Large π datasets
 - 🔤 Number and word searching
+- 🤖 Automatic π dataset generation
 - 📊 Reproducible performance benchmarks
 - 🐍 Python-friendly development, with faster compiled components where useful
 
