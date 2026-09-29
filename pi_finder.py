@@ -12,6 +12,8 @@ from generate_pi import write_pi
 from pi_search import search_text
 
 DEFAULT_PI_FILE = "pi.txt"
+DEFAULT_AUTO_DIGITS = 100_000
+AUTO_MAX_DIGITS = 10_000_000
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
 
@@ -37,6 +39,80 @@ def search_word(file_path: str | Path, word: str) -> tuple[str, int]:
     """Encode a word and search its digit representation."""
     encoded = encode_word(word)
     return encoded, search_text(file_path, encoded)
+
+
+def _pi_digits_in_file(file_path: Path) -> int:
+    """Return the number of digits after the decimal point in a pi file."""
+    if not file_path.exists():
+        return 0
+
+    size = file_path.stat().st_size
+    if size == 0:
+        return 0
+
+    # pi.txt is written as "3.<digits>" by generate_pi.py.
+    return max(0, size - 2)
+
+
+def _generate_more_pi(file_path: Path, current_digits: int, required_digits: int) -> int:
+    """Generate a larger pi dataset and return its new digit count."""
+    if current_digits == 0:
+        target = max(DEFAULT_AUTO_DIGITS, required_digits)
+    else:
+        target = max(current_digits * 2, required_digits)
+
+    target = min(target, AUTO_MAX_DIGITS)
+
+    if target <= current_digits:
+        return current_digits
+
+    print(f"Generating pi to {target:,} digits...")
+    start = time.perf_counter()
+    write_pi(file_path, target)
+    elapsed = time.perf_counter() - start
+    print(f"Generated {target:,} digits in {elapsed:.3f} s.")
+
+    return target
+
+
+def auto_search(
+    file_path: str | Path,
+    pattern: str,
+    label: str = "number",
+) -> int:
+    """Search now and automatically generate more pi when not found."""
+    path = Path(file_path)
+
+    current_digits = _pi_digits_in_file(path)
+
+    if current_digits == 0:
+        current_digits = _generate_more_pi(
+            path,
+            0,
+            len(pattern),
+        )
+
+    while True:
+        print(f"Searching {current_digits:,} pi digits...")
+        position = search_text(path, pattern)
+
+        if position != -1:
+            return position
+
+        if current_digits >= AUTO_MAX_DIGITS:
+            print(
+                f"Not found after searching {current_digits:,} digits. "
+                "Automatic generation limit reached."
+            )
+            return -1
+
+        print(f"Not found in the current {label} dataset.")
+        next_digits = _generate_more_pi(path, current_digits, len(pattern))
+
+        if next_digits == current_digits:
+            return -1
+
+        current_digits = next_digits
 
 
 def print_result(position: int) -> None:
@@ -156,14 +232,15 @@ def main() -> None:
                     continue
 
                 print("\nSearching...")
-                position = search_number(file_path, pattern)
+                position = auto_search(file_path, pattern, "number")
                 print_result(position)
 
             elif choice == "2":
                 word = input("Enter word: ").strip()
-                encoded, position = search_word(file_path, word)
+                encoded = encode_word(word)
                 print(f"Encoded: {encoded}")
                 print("\nSearching...")
+                position = auto_search(file_path, encoded, "word")
                 print_result(position)
 
             elif choice == "3":
