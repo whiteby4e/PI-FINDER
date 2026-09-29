@@ -7,7 +7,13 @@ import tracemalloc
 import webbrowser
 from pathlib import Path
 
-from benchmark_search import format_bytes
+from benchmark_search import (
+    DEFAULT_CHUNK_SIZES,
+    benchmark_search,
+    compare_chunk_sizes,
+    format_bytes,
+    print_benchmark_result,
+)
 from generate_pi import write_pi
 from pi_search import search_text
 
@@ -327,7 +333,7 @@ def run_search(file_path: Path, pattern: str, label: str) -> None:
 
 
 def run_benchmark(file_path: Path) -> None:
-    """Benchmark a search through the current pi file."""
+    """Benchmark the real pi database."""
     if not file_path.exists():
         raise FileNotFoundError(f"Pi file not found: {file_path}")
 
@@ -340,39 +346,58 @@ def run_benchmark(file_path: Path) -> None:
     if repeat <= 0:
         raise ValueError("repeats must be greater than zero")
 
-    file_size = file_path.stat().st_size
-    first_position = search_text(file_path, pattern)
+    print("\nBenchmark mode")
+    print("1. Single chunk size")
+    print("2. Compare chunk sizes")
+    mode = input("Select [2]: ").strip() or "2"
 
-    tracemalloc.start()
-    start = time.perf_counter()
-    position = first_position
+    if mode == "1":
+        chunk_text = input("Chunk size MiB [8]: ").strip() or "8"
+        chunk_mib = float(chunk_text)
+        if chunk_mib <= 0:
+            raise ValueError("chunk size must be greater than zero")
 
-    for _ in range(repeat):
-        position = search_text(file_path, pattern)
+        chunk_size = int(chunk_mib * 1024 * 1024)
+        result = benchmark_search(file_path, pattern, chunk_size, repeat)
 
-    elapsed = time.perf_counter() - start
-    _, peak_memory = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+        print("\nPI-FINDER Real File Benchmark")
+        print("-" * 40)
+        print(f"File:       {file_path}")
+        print(f"Size:       {format_bytes(file_path.stat().st_size)}")
+        print(f"Pattern:    {pattern}")
+        print_benchmark_result(result)
+        return
 
-    average = elapsed / repeat
-    mib_per_second = (
-        file_size / 1024 / 1024 / average if average else float("inf")
-    )
+    if mode == "2":
+        results = compare_chunk_sizes(
+            file_path,
+            pattern,
+            DEFAULT_CHUNK_SIZES,
+            repeat,
+        )
 
-    print("\nPI-FINDER Benchmark")
-    print("-" * 32)
-    print(f"File:       {file_path}")
-    print(f"Size:       {format_bytes(file_size)}")
-    print(f"Pattern:    {pattern}")
-    print(f"Result:     {'FOUND' if position != -1 else 'NOT FOUND'}")
-    if position != -1:
-        print(f"Position:   {position:,}")
-    print(f"Time:       {average:.4f} s")
-    print(f"Speed:      {mib_per_second:.2f} MiB/s")
-    print("Chunk:      8.00 MiB")
-    print(f"Peak RAM:   {format_bytes(peak_memory)}")
-    print(f"Repeats:    {repeat}")
+        print("\nPI-FINDER Chunk Size Benchmark")
+        print("-" * 40)
+        print(f"File:       {file_path}")
+        print(f"Size:       {format_bytes(file_path.stat().st_size)}")
+        print(f"Pattern:    {pattern}")
+        print(f"Repeats:    {repeat}")
+        print()
 
+        for result in results:
+            print(f"[{format_bytes(int(result['chunk_size']))} chunk]")
+            print_benchmark_result(result)
+            print()
+
+        fastest = min(results, key=lambda item: float(item["time"]))
+        print(
+            "Fastest:    "
+            f"{format_bytes(int(fastest['chunk_size']))} chunk "
+            f"({float(fastest['time']):.4f} s)"
+        )
+        return
+
+    raise ValueError("invalid benchmark mode")
 
 def database_menu(file_path: Path) -> None:
     """Interactive persistent database management menu."""
@@ -476,6 +501,7 @@ def main() -> None:
 
         except (OSError, UnicodeError, ValueError) as exc:
             print(f"Error: {exc}")
+            print("Please check your input and try again.")
 
         print()
 
