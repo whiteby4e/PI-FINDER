@@ -179,48 +179,86 @@ def continue_generation(file_path: Path) -> None:
 
 
 def check_database_integrity(file_path: Path) -> bool:
-    """Check that pi.txt contains only the expected decimal digits of pi."""
+    """Check the dataset and report the exact location of invalid bytes."""
     if not file_path.exists():
-        print("\\nDatabase integrity: FAILED")
+        print("\nDatabase integrity: FAILED")
         print("Reason: pi.txt does not exist.")
         return False
 
+    prefix_bytes = PI_PREFIX.encode("ascii")
+
     try:
         with file_path.open("rb") as file:
-            prefix = file.read(len(PI_PREFIX))
-            if prefix != PI_PREFIX.encode("ascii"):
-                print("\\nDatabase integrity: FAILED")
-                print("Reason: invalid π prefix or corrupted dataset.")
+            prefix = file.read(len(prefix_bytes))
+            if prefix != prefix_bytes:
+                mismatch = min(len(prefix), len(prefix_bytes))
+                while mismatch < len(prefix) and mismatch < len(prefix_bytes):
+                    if prefix[mismatch] != prefix_bytes[mismatch]:
+                        break
+                    mismatch += 1
+
+                actual = prefix[mismatch:mismatch + 1]
+                expected = prefix_bytes[mismatch:mismatch + 1]
+                actual_value = (
+                    f"0x{actual[0]:02X} ({actual!r})" if actual else "EOF"
+                )
+                expected_value = (
+                    f"0x{expected[0]:02X} ({expected!r})"
+                    if expected else "EOF"
+                )
+
+                print("\nDatabase integrity: FAILED")
+                print(f"Reason: π prefix mismatch at position {mismatch + 1:,}.")
+                print(f"Expected: {expected_value}")
+                print(f"Found:    {actual_value}")
                 return False
 
             checked = len(prefix)
+            file_size = file_path.stat().st_size
+
             while True:
+                chunk_start = checked
                 chunk = file.read(8 * 1024 * 1024)
                 if not chunk:
                     break
 
-                if file.tell() == file_path.stat().st_size:
+                is_last_chunk = file.tell() == file_size
+
+                if is_last_chunk:
                     if chunk.endswith(b"\\r\\n"):
                         chunk = chunk[:-2]
                     elif chunk.endswith(b"\\n"):
                         chunk = chunk[:-1]
 
-                if not chunk.isdigit():
-                    print("\\nDatabase integrity: FAILED")
-                    print(f"Reason: non-digit data detected after character {checked:,}.")
+                invalid_index = next(
+                    (index for index, byte in enumerate(chunk) if byte < ord("0") or byte > ord("9")),
+                    None,
+                )
+
+                if invalid_index is not None:
+                    position = chunk_start + invalid_index + 1
+                    value = chunk[invalid_index]
+                    context_start = max(0, invalid_index - 10)
+                    context_end = min(len(chunk), invalid_index + 11)
+                    context = chunk[context_start:context_end]
+
+                    print("\nDatabase integrity: FAILED")
+                    print("Reason: non-digit data detected.")
+                    print(f"Position: {position:,}")
+                    print(f"Byte:     0x{value:02X} ({value!r})")
+                    print(f"Context:  {context!r}")
                     return False
 
                 checked += len(chunk)
 
     except (OSError, UnicodeError) as exc:
-        print(f"\\nDatabase integrity: FAILED\\nReason: {exc}")
+        print(f"\nDatabase integrity: FAILED\nReason: {exc}")
         return False
 
-    print("\\nDatabase integrity: OK")
+    print("\nDatabase integrity: OK")
     print(f"Checked: {checked:,} characters")
     print("Format: continuous decimal digits (3.14159...)")
     return True
-
 def generate_pi_file(file_path: Path) -> None:
     """Generate a new pi file from the interactive menu."""
     raw_digits = input("Digits after decimal point: ").strip()
