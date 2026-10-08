@@ -27,9 +27,16 @@ def naive_search(data: bytes, pattern: bytes) -> int:
     if m > n:
         return -1
 
+    # Avoid creating a new slice for every candidate position.
+    last = n - m
     first = pattern[0]
-    for i in range(n - m + 1):
-        if data[i] == first and data[i : i + m] == pattern:
+    for i in range(last + 1):
+        if data[i] != first:
+            continue
+        for j in range(1, m):
+            if data[i + j] != pattern[j]:
+                break
+        else:
             return i
     return -1
 
