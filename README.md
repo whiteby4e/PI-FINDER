@@ -1,241 +1,112 @@
+<div align="center">
+
 # PI-FINDER 🔎π
 
-A high-performance tool for searching numbers and encoded words inside the digits of **π (pi)**.
+**Find number patterns inside the digits of π.**
 
-> **Status:** 🚧 Early development — core search, generation, benchmarks, word search, automatic dataset growth, persistent database management, and the text interface are implemented.
+A Python project for searching digit sequences and encoded words in a growing local π dataset.
 
-## What is PI-FINDER?
+![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Early%20Development-orange)
 
-PI-FINDER is an open-source project designed to search for:
+*Find it in π.*
 
-- 🔢 **Numbers** — find a numeric sequence inside the digits of π.
-- 🔤 **Words** — encode a word into digits and search for the resulting sequence in π.
+</div>
 
-> **Search as fast as possible, while keeping the system practical for large amounts of π data.**
+---
 
-## Current π Dataset
+## 🔢 What can it search?
 
-The repository currently includes a π dataset of approximately **157 KB**, containing about **1,131,308 decimal digits**.
+- **Numbers:** search a digit sequence directly.
+- **Words:** encode A–Z as fixed-width numbers (A = 01, …, Z = 26), then search the resulting digit sequence.
 
-~~~text
-pi.txt
-├── Size: ~157 KB
-└── Digits: ~1,131,308
-~~~
+Both modes use the same core search engine.
 
-**This is NOT the main or complete π database.** It is the dataset currently included with the project and is mainly provided as a starting point.
+## ✨ Features
 
-You can increase the dataset size manually, use the persistent database tools to grow it, or let the program increase it automatically when a searched number or word is not found.
+- Search within a local π dataset.
+- Generate additional π digits when a pattern is not found.
+- Grow the persistent dataset manually or automatically.
+- Inspect database size, digit count, and update information.
+- Check basic dataset structure and known π prefix.
+- Run benchmarks and view search statistics.
+- Use a terminal-based interactive menu.
 
-## How it works
+## ⚡ Quick start
 
-~~~text
-PI-FINDER
-│
-├── π ENGINE
-│   ├── Generate π
-│   └── Load existing π data
-│
-├── STORAGE
-│   └── Manage persistent π dataset
-│
-├── SEARCH ENGINE
-│   └── Fast pattern searching
-│
-├── WORD ENCODER
-│   └── Convert words → digit sequences
-│
-└── USER INTERFACE
-    └── Search results & controls
-~~~
+```bash
+git clone https://github.com/whiteby4e/PI-FINDER.git
+cd PI-FINDER
+python pi_finder.py
+```
 
-The **Number** and **Word** modes use the same core search engine. Word mode only converts its input into digits before searching.
+Use the menu to search a number or word, generate more digits, run a benchmark, or inspect the local database.
 
-## Search modes
+## 🔍 Example: word encoding
 
-### Number Mode
+The project uses fixed-width A1Z26 encoding:
 
-~~~text
-Input: 123456789
-Result: Found
-Position: ...
-~~~
-
-### Word Mode
-
-A word can be converted to a fixed-width numeric representation.
-
-~~~text
+```text
 A = 01
 B = 02
 ...
 Z = 26
 
 HELLO
-↓
+  ↓
 08 05 12 12 15
-↓
+  ↓
 0805121215
-~~~
+  ↓
+Search this sequence in π
+```
 
-The encoded sequence is then searched using the same search engine as Number Mode.
+## 💾 The π dataset
 
-## Automatic π generation
+The repository includes a starting dataset of approximately **1.13 million decimal digits** in `pi.txt`. This is not a complete or infinite database.
 
-When Number Mode or Word Mode does not find a pattern in the current `pi.txt`, PI-FINDER automatically generates a larger π dataset and searches again.
+If a pattern is not found, the automatic search can grow the local dataset, doubling its size up to the current configured safety limit of **10 million digits**. If `pi.txt` is missing, the program can generate an initial dataset.
 
-~~~text
-Enter number: 123456789
+The database tools can also continue generation manually.
 
-Searching 100,000 pi digits...
-Not found in the current number dataset.
-Generating pi to 200,000 digits...
+## 🧪 Benchmarks and tests
 
-Searching 200,000 pi digits...
-FOUND!
-Position: ...
-~~~
+Run the search-engine tests:
 
-If `pi.txt` does not exist, PI-FINDER starts by generating a default dataset of **100,000 digits**.
+```bash
+python -m unittest discover -s tests
+```
 
-The automatic search currently doubles the dataset size when it needs to grow, up to a safety limit of **10,000,000 digits**.
+Benchmark scripts are provided in the repository:
 
-You can also manually generate a larger dataset whenever you want.
+- `benchmark.py`
+- `benchmark_search.py`
 
-## Level 11 — Persistent π Database
+Benchmark results depend on hardware, Python version, and dataset size. Use the scripts to measure your own machine rather than treating one result as universal.
 
-PI-FINDER now has a dedicated database management menu for the persistent `pi.txt` dataset.
+## 🧠 Important mathematical note
 
-### Database Info
+π has infinitely many decimal digits, but any computer search can inspect only a finite dataset at a time.
 
-Shows:
+**NOT FOUND does not mean a sequence never occurs anywhere in π.** It only means the sequence was not found in the digits currently searched.
 
-- Current number of π digits
-- File size
-- Last update time
-- Current database path
-- Progress toward the automatic 10-million-digit limit
+It has also not been proven that π contains every possible finite digit sequence; the normality of π in base 10 remains unproven.
 
-Example:
+## 🧱 Project structure
 
-~~~text
-PI-FINDER DATABASE
---------------------------------
-Status:      AVAILABLE
-Database:    pi.txt
-Digits:      1,131,308
-File size:   157 KB
-Last update: ...
-Progress:    [##..................] 1,131,308/10,000,000
-~~~
+```text
+PI-FINDER/
+├── pi_finder.py
+├── pi_search.py
+├── search_engine.py
+├── generate_pi.py
+├── benchmark.py
+├── benchmark_search.py
+├── pi.txt
+└── tests/
+```
 
-### Continue Generation
+## 📄 License
 
-The database can be expanded with **Continue generation (2x)**.
-
-For example:
-
-~~~text
-160,000
-   ↓
-320,000
-   ↓
-640,000
-   ↓
-1,280,000
-   ↓
-...
-~~~
-
-This uses the current database size and grows it up to the automatic generation limit.
-
-### Search Statistics
-
-Searches now report statistics such as:
-
-~~~text
-Search Statistics
---------------------------------
-Search:     1609
-Position:   396
-Dataset:    1,131,308 digits
-Time:       0.0032 s
-~~~
-
-For automatic searches, the reported time covers the complete search operation, including any additional π generation required.
-
-### Database Integrity
-
-The database manager can check whether `pi.txt`:
-
-- Exists
-- Has the expected `3.<decimal digits>` structure
-- Starts with the known decimal prefix of π
-- Contains only decimal digits after the decimal point
-
-Example:
-
-~~~text
-Database integrity: OK
-Checked: 1,131,308 characters
-Format: 3.<decimal digits>
-~~~
-
-This is a structural integrity check; it does not mathematically prove every stored digit is correct.
-
-## Interactive interface
-
-Run `py pi_finder.py`.
-
-The main menu provides:
-
-1. **Search number** — search digits in `pi.txt`, automatically generating more π if needed.
-2. **Search word** — encode A-Z with fixed-width A1Z26 and automatically generate more π if needed.
-3. **Generate pi** — generate a new `pi.txt` dataset from a chosen number of digits.
-4. **Benchmark** — measure search time, throughput, and Python-traced peak allocations.
-5. **PI Database** — inspect, grow, and validate the persistent π dataset.
-6. **Admin mode** — a joke Easter egg.
-7. **Exit**
-
-## Important note about π
-
-π has infinitely many decimal digits, but a computer can only search a finite amount at a time.
-
-**NOT FOUND does not mean that the sequence never occurs anywhere in π.**
-
-It is also not currently proven that π contains every possible finite digit sequence, because the normality of π in base 10 has not been proven.
-
-## Performance
-
-Performance is a core part of this project.
-
-Planned benchmark sizes:
-- 1 MB
-- 10 MB
-- 100 MB
-- 1 GB
-- Larger datasets when practical
-
-Metrics include search speed, π generation speed, memory usage, CPU usage, dataset loading speed, and repeated-query performance.
-
-## Project goals
-
-- ⚡ Fast searching
-- 💾 Efficient storage
-- 🧠 Memory-aware architecture
-- 🔢 Large π datasets
-- 🔤 Number and word searching
-- 🤖 Automatic π dataset generation
-- 🗄️ Persistent π database management
-- 🔍 Database integrity checking
-- 📊 Reproducible performance benchmarks
-- 🐍 Python-friendly development, with faster compiled components where useful
-
-## License
-
-PI-FINDER is released under the **MIT License**.
-
----
-
-**PI-FINDER**  
-*Find it in π.*
+MIT — see [LICENSE](LICENSE).
